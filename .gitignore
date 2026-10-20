@@ -1,0 +1,8 @@
+.venv/
+.idea/
+__pycache__/
+.pytest_cache/
+*.pyc
+.env
+readme_candidate.md
+event_log_sample.csv
