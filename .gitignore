@@ -6,3 +6,6 @@ __pycache__/
 .env
 readme_candidate.md
 event_log_sample.csv
+.venv-314/
+.venv-39/
+Learning/
