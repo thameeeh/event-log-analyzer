@@ -5,6 +5,7 @@ Fill in the TODOs. Feel free to restructure anything here. this is just a starti
 
 from pathlib import Path
 from enum import IntEnum
+import csv
 
 
 class EventSeverity(IntEnum):
@@ -46,7 +47,38 @@ class Event:
 
 
 def load_events(path):
-    pass  # TODO
+    """
+    This function loads all events from the csv file and returns a list of those object events
+    :param path: variable for the location of the file
+    :return: a list of event objects
+    """
+    with open(path, "r", newline="") as file:
+        delimiter = file.readline().rstrip("\r\n").removeprefix("sep=")
+        reader = csv.reader(file, delimiter=delimiter)
+        headers = next(reader)
+        row_list = []
+
+        for row in reader:
+            severity_name = row[2].upper()
+            severity = EventSeverity[severity_name]
+
+            row_event = Event(
+                event_number=int(row[0]),
+                event_timestamp = row[1],
+                event_severity = severity,
+                object_name = row[3],
+                object_id = int(row[4]),
+                event_id = int(row[5]),
+                event_name = row[6],
+                event_description = row[7],
+                event_remedy = row[8],
+                event_readable = row[9],
+                event_raw = row[10],
+            )
+
+            row_list.append(row_event)
+
+    return row_list
 
 
 class EventLog:
@@ -68,19 +100,3 @@ if __name__ == "__main__":
     events = load_events(Path(__file__).parent / "event_log_sample.csv")
     log = EventLog(events)
     print(f"Loaded {len(events)} events")
-
-    testing = Event(
-        event_number=1,
-        event_timestamp="2026-01-01 12:00:00",
-        event_severity=EventSeverity.ERROR,
-        object_name="Testing stuff",
-        object_id=10,
-        event_id=20,
-        event_name="Event ex",
-        event_description="This is a test of event",
-        event_remedy="Attempt restart",
-        event_readable="",
-        event_raw="3E",
-    )
-
-    print(testing)
