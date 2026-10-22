@@ -54,26 +54,25 @@ def load_events(path):
     """
     with open(path, "r", newline="") as file:
         delimiter = file.readline().rstrip("\r\n").removeprefix("sep=")
-        reader = csv.reader(file, delimiter=delimiter)
-        headers = next(reader)
+        reader = csv.DictReader(file, delimiter=delimiter)
         row_list = []
 
         for row in reader:
-            severity_name = row[2].upper()
+            severity_name = row["Severity"].upper()
             severity = EventSeverity[severity_name]
 
             row_event = Event(
-                event_number=int(row[0]),
-                event_timestamp = row[1],
+                event_number=int(row["Event number"]),
+                event_timestamp = row["Timestamp"],
                 event_severity = severity,
-                object_name = row[3],
-                object_id = int(row[4]),
-                event_id = int(row[5]),
-                event_name = row[6],
-                event_description = row[7],
-                event_remedy = row[8],
-                event_readable = row[9],
-                event_raw = row[10],
+                object_name = row["Object name"],
+                object_id = int(row["Object ID"]),
+                event_id = int(row["Event ID"]),
+                event_name = row["Event name"],
+                event_description = row["Description"],
+                event_remedy = row["Remedy"],
+                event_readable = row["Readable"],
+                event_raw = row["Raw"],
             )
 
             row_list.append(row_event)
