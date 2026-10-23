@@ -99,7 +99,19 @@ class EventLog:
         return event_list
 
     def count_by_object(self):
-        pass  # TODO
+        """
+        This function counts the number of events by object name
+        :return: a dictionary containing the object name and the count of events
+        """
+        event_dict = {}
+
+        for one_event in self._events:
+            if one_event.object_name not in event_dict:
+                event_dict[one_event.object_name] = 1
+            else:
+                event_dict[one_event.object_name] += 1
+
+        return event_dict
 
     @property
     def error_rate(self):
@@ -110,5 +122,3 @@ if __name__ == "__main__":
     event = load_events(Path(__file__).parent / "event_log_sample.csv")
     log = EventLog(event)
     print(f"Loaded {len(event)} events")
-
-    print(len(log.filter_by_severity(EventSeverity.ERROR)))
