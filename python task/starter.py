@@ -85,7 +85,18 @@ class EventLog:
         self._events = events
 
     def filter_by_severity(self, min_severity):
-        pass  # TODO
+        """
+        This function filters events by the chosen minimum severity
+        :param min_severity: variable for the minimum severity
+        :return: a list of events with severity at or above min_severity
+        """
+        event_list = []
+
+        for one_event in self._events:
+            if one_event.event_severity >= min_severity:
+                event_list.append(one_event)
+
+        return event_list
 
     def count_by_object(self):
         pass  # TODO
@@ -96,6 +107,8 @@ class EventLog:
 
 
 if __name__ == "__main__":
-    events = load_events(Path(__file__).parent / "event_log_sample.csv")
-    log = EventLog(events)
-    print(f"Loaded {len(events)} events")
+    event = load_events(Path(__file__).parent / "event_log_sample.csv")
+    log = EventLog(event)
+    print(f"Loaded {len(event)} events")
+
+    print(len(log.filter_by_severity(EventSeverity.ERROR)))
