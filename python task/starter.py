@@ -115,7 +115,18 @@ class EventLog:
 
     @property
     def error_rate(self):
-        pass  # TODO
+        """
+        This function calculates the error rate of the events log
+        returns 0.0 if the log is empty.
+        :return: the fraction of events that are errors
+        """
+        if not self._events:
+            return 0.0
+
+        total_events = len(self._events)
+        error_events = len(self.filter_by_severity(EventSeverity.ERROR))
+
+        return error_events / total_events
 
 
 if __name__ == "__main__":
