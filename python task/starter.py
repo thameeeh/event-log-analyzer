@@ -85,17 +85,51 @@ class EventLog:
         self._events = events
 
     def filter_by_severity(self, min_severity):
-        pass  # TODO
+        """
+        This function filters events by the chosen minimum severity
+        :param min_severity: variable for the minimum severity
+        :return: a list of events with severity at or above min_severity
+        """
+        event_list = []
+
+        for one_event in self._events:
+            if one_event.event_severity >= min_severity:
+                event_list.append(one_event)
+
+        return event_list
 
     def count_by_object(self):
-        pass  # TODO
+        """
+        This function counts the number of events by object name
+        :return: a dictionary containing the object name and the count of events
+        """
+        event_dict = {}
+
+        for one_event in self._events:
+            if one_event.object_name not in event_dict:
+                event_dict[one_event.object_name] = 1
+            else:
+                event_dict[one_event.object_name] += 1
+
+        return event_dict
 
     @property
     def error_rate(self):
-        pass  # TODO
+        """
+        This function calculates the error rate of the events log
+        returns 0.0 if the log is empty.
+        :return: the fraction of events that are errors
+        """
+        if not self._events:
+            return 0.0
+
+        total_events = len(self._events)
+        error_events = len(self.filter_by_severity(EventSeverity.ERROR))
+
+        return error_events / total_events
 
 
 if __name__ == "__main__":
-    events = load_events(Path(__file__).parent / "event_log_sample.csv")
-    log = EventLog(events)
-    print(f"Loaded {len(events)} events")
+    event = load_events(Path(__file__).parent / "event_log_sample.csv")
+    log = EventLog(event)
+    print(f"Loaded {len(event)} events")
