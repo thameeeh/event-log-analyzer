@@ -50,7 +50,18 @@ def show_menu() -> None:
 
 
 def main(path: Path) -> None:
-    event = load_events(path)
+    try:
+        event = load_events(path)
+    except FileNotFoundError as e:
+        print(f"File not found: {e}")
+        return
+    except PermissionError as e:
+        print(f"Permission error: {e}")
+        return
+    except OSError as e:
+        print(f"OS error: {e}")
+        return
+
     log = EventLog(event)
 
     while True:
@@ -66,7 +77,18 @@ def main(path: Path) -> None:
                     print("Selection cancelled. Keeping the current log.")
                     continue
 
-                new_events = load_events(new_path)
+                try:
+                    new_events = load_events(new_path)
+                except FileNotFoundError as e:
+                    print(f"File not found: {e}")
+                    continue
+                except PermissionError as e:
+                    print(f"Permission error: {e}")
+                    continue
+                except OSError as e:
+                    print(f"OS error: {e}")
+                    continue
+
                 log = EventLog(new_events)
 
                 print(f"Loaded {len(new_events)} events from {new_path.name}.")
