@@ -49,6 +49,9 @@ class Event:
     def __str__(self) -> str:
         return self.summary()
 
+    def __repr__(self) -> str:
+        return self.summary()
+
 
 def load_events(path: Path) -> list[Event]:
     """
@@ -134,8 +137,16 @@ class EventLog:
 
         return error_fraction
 
+    @property
+    def events(self):
+        return self._events
+
 
 if __name__ == "__main__":
     event = load_events(Path(__file__).parent / "event_log_sample.csv")
     log = EventLog(event)
     print(f"Loaded {len(event)} events")
+    print(len(log.filter_by_severity(EventSeverity.ERROR)))
+    print(log.count_by_object())
+    print(log.error_rate)
+    print(log.events)
