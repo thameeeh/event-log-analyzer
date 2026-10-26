@@ -60,13 +60,56 @@ def load_events(path: Path) -> list[Event]:
     :return: a list of event objects
     """
     with open(path, "r", newline="") as file:
-        delimiter = file.readline().rstrip("\r\n").removeprefix("sep=")
+        first_line = file.readline().rstrip("\r\n")
+        if first_line.startswith("sep="):
+            delimiter = first_line.removeprefix("sep=")
+            if len(delimiter) != 1:
+                raise ValueError("Invalid delimiter")
+        else:
+            file.seek(0)
+            delimiter = "\t"
+
         reader = csv.DictReader(file, delimiter=delimiter)
+
+        headers = reader.fieldnames
+        if not headers:
+            raise ValueError("The file has no column headers. (Check if the file is empty)")
+
+        if not any(header.strip() for header in headers):
+            raise ValueError("The file has no headers")
+
+        required_headers = ["Event number", "Timestamp", "Severity",
+                            "Object name", "Object ID", "Event ID", "Event name",
+                            "Description", "Remedy", "Readable", "Raw"]
+
+        missing_headers = []
+
+        for header in required_headers:
+            if header not in headers:
+                missing_headers.append(header)
+
+        if missing_headers:
+            missing_names = ", ".join(missing_headers)
+            raise ValueError(f"Missing headers: {missing_names}")
+
         row_list = []
 
         for row in reader:
+
+            missing_fields = []
+            for header in required_headers:
+                if row[header] is None:
+                    missing_fields.append(header)
+
+            if missing_fields:
+                missing_names = ", ".join(missing_fields)
+                raise ValueError(f"Missing fields: {missing_names}")
+
             severity_name = row["Severity"].upper()
-            severity = EventSeverity[severity_name]
+            try:
+                severity = EventSeverity[severity_name]
+            except KeyError:
+                raise ValueError(f"Unknown severity: {severity_name}")
 
             row_event = Event(
                 event_number=int(row["Event number"]),

@@ -61,6 +61,9 @@ def main(path: Path) -> None:
     except OSError as e:
         print(f"OS error: {e}")
         return
+    except ValueError as e:
+        print(f"ValueError: {e}")
+        return
 
     log = EventLog(event)
 
@@ -70,6 +73,7 @@ def main(path: Path) -> None:
         match user_input:
             case "0":
                 return
+
             case "1":
                 new_path = choose_file()
 
@@ -88,12 +92,17 @@ def main(path: Path) -> None:
                 except OSError as e:
                     print(f"OS error: {e}")
                     continue
+                except ValueError as e:
+                    print(f"ValueError: {e} (Keeping the current log)")
+                    continue
 
                 log = EventLog(new_events)
 
                 print(f"Loaded {len(new_events)} events from {new_path.name}.")
+
             case "2":
                 print(f"Loaded {len(log.events)} events")
+
             case "3":
                 severity_choice = input(
                     "Minimum severity (0=Info, 1=Warning, 2=Error): "
@@ -117,14 +126,17 @@ def main(path: Path) -> None:
                 else:
                     for event in matching_events:
                         print(event)
+
             case "4":
                 counted_by_name = log.count_by_object()
                 for object_name, object_count in counted_by_name.items():
                     print(f"{object_name}: {object_count} events")
+
             case "5":
                 error_rate = log.error_rate
                 print(f"Error rate: {error_rate:.2%} or "
                       f"{error_rate}")
+
             case _:
                 print("Unrecognized command: " + user_input)
 
