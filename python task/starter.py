@@ -38,7 +38,7 @@ class Event:
         self.event_readable = event_readable
         self.event_raw = event_raw
 
-    def summary(self) -> str:
+    def __str__(self) -> str:
         return (
             f"Event {self.event_number}, {self.event_timestamp}, "
             f"{self.event_severity.name}, {self.object_name}, {self.object_id}, "
@@ -46,11 +46,8 @@ class Event:
             f"{self.event_remedy}, {self.event_readable}, {self.event_raw}"
         )
 
-    def __str__(self) -> str:
-        return self.summary()
-
     def __repr__(self) -> str:
-        return self.summary()
+        return str(self)
 
 
 def load_events(path: Path) -> list[Event]:
@@ -181,7 +178,7 @@ class EventLog:
         return error_fraction
 
     @property
-    def events(self):
+    def events(self) -> list[Event]:
         return self._events
 
 
