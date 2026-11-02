@@ -1,6 +1,7 @@
 from pathlib import Path
 from enum import IntEnum
 from datetime import datetime
+from dataclasses import dataclass
 import csv
 
 
@@ -9,35 +10,22 @@ class EventSeverity(IntEnum):
     WARNING = 1
     ERROR = 2
 
-
+@dataclass
 class Event:
     """
     The class event represents a single event in the event log
     """
-    def __init__(self,
-                 number: int,
-                 timestamp: datetime,
-                 severity: EventSeverity,
-                 object_name: str,
-                 object_id: int,
-                 id: int,
-                 name: str,
-                 description: str,
-                 remedy: str,
-                 readable: str,
-                 raw: str
-                 ) -> None:
-        self.number = number
-        self.timestamp = timestamp
-        self.severity = severity
-        self.object_name = object_name
-        self.object_id = object_id
-        self.id = id
-        self.name = name
-        self.description = description
-        self.remedy = remedy
-        self.readable = readable
-        self.raw = raw
+    number: int
+    timestamp: datetime
+    severity: EventSeverity
+    object_name: str
+    object_id: int
+    id: int
+    name: str
+    description: str
+    remedy: str
+    readable: str
+    raw: str
 
     def __str__(self) -> str:
         return (
