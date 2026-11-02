@@ -79,7 +79,7 @@ def load_events(path: Path) -> list[Event]:
             missing_names = ", ".join(missing_headers)
             raise ValueError(f"Missing headers: {missing_names}")
 
-        row_list = []
+        events = []
 
         for row in reader:
 
@@ -98,7 +98,7 @@ def load_events(path: Path) -> list[Event]:
             except KeyError:
                 raise ValueError(f"Unknown severity: {severity_name}")
 
-            row_event = Event(
+            event = Event(
                 number=int(row["Event number"]),
                 timestamp = datetime.strptime(row["Timestamp"],
                                             "%Y-%m-%d %H:%M:%S"),
@@ -113,9 +113,9 @@ def load_events(path: Path) -> list[Event]:
                 raw = row["Raw"],
             )
 
-            row_list.append(row_event)
+            events.append(event)
 
-    return row_list
+    return events
 
 
 class EventLog:
@@ -173,7 +173,7 @@ class EventLog:
         return self._events
 
 
-if __name__ == "__main__":
+def main() -> None:
     parser = argparse.ArgumentParser(
         description="Read and analyze an event log."
     )
@@ -186,14 +186,17 @@ if __name__ == "__main__":
     file_path = args.file_path
 
     try:
-        event = load_events(file_path)
+        events = load_events(file_path)
     except (ValueError, OSError) as error:
         print(f"Could not load the log: {error}")
         raise SystemExit(1)
 
-    log = EventLog(event)
-    print(f"Loaded {len(event)} events")
+    log = EventLog(events)
+    print(f"Loaded {len(events)} events")
     print(len(log.filter_by_severity(EventSeverity.ERROR)))
     print(log.count_by_object())
     print(log.error_rate)
     print(log.events)
+
+if __name__ == "__main__":
+    main()
