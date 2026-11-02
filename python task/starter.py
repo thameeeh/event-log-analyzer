@@ -1,5 +1,6 @@
 from pathlib import Path
 from enum import IntEnum
+from datetime import datetime
 import csv
 
 
@@ -15,7 +16,7 @@ class Event:
     """
     def __init__(self,
                  event_number: int,
-                 event_timestamp: str,
+                 event_timestamp: datetime,
                  event_severity: EventSeverity,
                  object_name: str,
                  object_id: int,
@@ -110,7 +111,8 @@ def load_events(path: Path) -> list[Event]:
 
             row_event = Event(
                 event_number=int(row["Event number"]),
-                event_timestamp = row["Timestamp"],
+                event_timestamp = datetime.strptime(row["Timestamp"],
+                                            "%Y-%m-%d %H:%M:%S"),
                 event_severity = severity,
                 object_name = row["Object name"],
                 object_id = int(row["Object ID"]),
