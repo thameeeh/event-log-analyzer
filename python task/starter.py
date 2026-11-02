@@ -20,7 +20,7 @@ class Event:
                  severity: EventSeverity,
                  object_name: str,
                  object_id: int,
-                 event_id: int,
+                 id: int,
                  name: str,
                  description: str,
                  remedy: str,
@@ -32,7 +32,7 @@ class Event:
         self.severity = severity
         self.object_name = object_name
         self.object_id = object_id
-        self.event_id = event_id
+        self.id = id
         self.name = name
         self.description = description
         self.remedy = remedy
@@ -43,7 +43,7 @@ class Event:
         return (
             f"Event {self.number}, {self.timestamp}, "
             f"{self.severity.name}, {self.object_name}, {self.object_id}, "
-            f"{self.event_id}, {self.name}, {self.description}, "
+            f"{self.id}, {self.name}, {self.description}, "
             f"{self.remedy}, {self.readable}, {self.raw}"
         )
 
@@ -116,7 +116,7 @@ def load_events(path: Path) -> list[Event]:
                 severity = severity,
                 object_name = row["Object name"],
                 object_id = int(row["Object ID"]),
-                event_id = int(row["Event ID"]),
+                id = int(row["Event ID"]),
                 name = row["Event name"],
                 description = row["Description"],
                 remedy = row["Remedy"],
