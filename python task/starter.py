@@ -1,3 +1,4 @@
+import argparse
 from pathlib import Path
 from enum import IntEnum
 from datetime import datetime
@@ -173,8 +174,19 @@ class EventLog:
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Read and analyze an event log."
+    )
+    parser.add_argument(
+        "file_path",
+        type=Path,
+        help="Path to the event log; opens a file picker if omitted",
+    )
+    args = parser.parse_args()
+    file_path = args.file_path
+
     try:
-        event = load_events(Path(__file__).parent / "event_log_sample.csv")
+        event = load_events(file_path)
     except (ValueError, OSError) as error:
         print(f"Could not load the log: {error}")
         raise SystemExit(1)
