@@ -15,36 +15,36 @@ class Event:
     The class event represents a single event in the event log
     """
     def __init__(self,
-                 event_number: int,
-                 event_timestamp: datetime,
-                 event_severity: EventSeverity,
+                 number: int,
+                 timestamp: datetime,
+                 severity: EventSeverity,
                  object_name: str,
                  object_id: int,
                  event_id: int,
-                 event_name: str,
-                 event_description: str,
-                 event_remedy: str,
-                 event_readable: str,
-                 event_raw: str
+                 name: str,
+                 description: str,
+                 remedy: str,
+                 readable: str,
+                 raw: str
                  ) -> None:
-        self.event_number = event_number
-        self.event_timestamp = event_timestamp
-        self.event_severity = event_severity
+        self.number = number
+        self.timestamp = timestamp
+        self.severity = severity
         self.object_name = object_name
         self.object_id = object_id
         self.event_id = event_id
-        self.event_name = event_name
-        self.event_description = event_description
-        self.event_remedy = event_remedy
-        self.event_readable = event_readable
-        self.event_raw = event_raw
+        self.name = name
+        self.description = description
+        self.remedy = remedy
+        self.readable = readable
+        self.raw = raw
 
     def __str__(self) -> str:
         return (
-            f"Event {self.event_number}, {self.event_timestamp}, "
-            f"{self.event_severity.name}, {self.object_name}, {self.object_id}, "
-            f"{self.event_id}, {self.event_name}, {self.event_description}, "
-            f"{self.event_remedy}, {self.event_readable}, {self.event_raw}"
+            f"Event {self.number}, {self.timestamp}, "
+            f"{self.severity.name}, {self.object_name}, {self.object_id}, "
+            f"{self.event_id}, {self.name}, {self.description}, "
+            f"{self.remedy}, {self.readable}, {self.raw}"
         )
 
     def __repr__(self) -> str:
@@ -110,18 +110,18 @@ def load_events(path: Path) -> list[Event]:
                 raise ValueError(f"Unknown severity: {severity_name}")
 
             row_event = Event(
-                event_number=int(row["Event number"]),
-                event_timestamp = datetime.strptime(row["Timestamp"],
+                number=int(row["Event number"]),
+                timestamp = datetime.strptime(row["Timestamp"],
                                             "%Y-%m-%d %H:%M:%S"),
-                event_severity = severity,
+                severity = severity,
                 object_name = row["Object name"],
                 object_id = int(row["Object ID"]),
                 event_id = int(row["Event ID"]),
-                event_name = row["Event name"],
-                event_description = row["Description"],
-                event_remedy = row["Remedy"],
-                event_readable = row["Readable"],
-                event_raw = row["Raw"],
+                name = row["Event name"],
+                description = row["Description"],
+                remedy = row["Remedy"],
+                readable = row["Readable"],
+                raw = row["Raw"],
             )
 
             row_list.append(row_event)
@@ -142,7 +142,7 @@ class EventLog:
         event_list = []
 
         for one_event in self._events:
-            if one_event.event_severity >= min_severity:
+            if one_event.severity >= min_severity:
                 event_list.append(one_event)
 
         return event_list
