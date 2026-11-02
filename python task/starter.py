@@ -173,7 +173,12 @@ class EventLog:
 
 
 if __name__ == "__main__":
-    event = load_events(Path(__file__).parent / "event_log_sample.csv")
+    try:
+        event = load_events(Path(__file__).parent / "event_log_sample.csv")
+    except (ValueError, OSError) as error:
+        print(f"Could not load the log: {error}")
+        raise SystemExit(1)
+
     log = EventLog(event)
     print(f"Loaded {len(event)} events")
     print(len(log.filter_by_severity(EventSeverity.ERROR)))
