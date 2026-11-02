@@ -180,7 +180,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "file_path",
         type=Path,
-        help="Path to the event log; opens a file picker if omitted",
+        help="Path to the event log",
     )
     args = parser.parse_args()
     file_path = args.file_path
