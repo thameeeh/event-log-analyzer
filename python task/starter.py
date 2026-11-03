@@ -3,6 +3,7 @@ from pathlib import Path
 from enum import IntEnum
 from datetime import datetime
 from dataclasses import dataclass
+from collections import Counter
 import csv
 
 
@@ -138,15 +139,10 @@ class EventLog:
         This function counts the number of events by object name
         :return: a dictionary containing the object name and the count of events
         """
-        event_dict = {}
+        object_names = [one_event.object_name for one_event in self._events]
+        counts = Counter(object_names)
 
-        for one_event in self._events:
-            if one_event.object_name not in event_dict:
-                event_dict[one_event.object_name] = 1
-            else:
-                event_dict[one_event.object_name] += 1
-
-        return event_dict
+        return dict(counts)
 
     @property
     def error_rate(self) -> float:
