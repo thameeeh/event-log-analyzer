@@ -128,11 +128,8 @@ class EventLog:
         :param min_severity: variable for the minimum severity
         :return: a list of events with severity at or above min_severity
         """
-        event_list = []
-
-        for one_event in self._events:
-            if one_event.severity >= min_severity:
-                event_list.append(one_event)
+        event_list = [one_event for one_event in self._events
+                      if one_event.severity >= min_severity]
 
         return event_list
 
