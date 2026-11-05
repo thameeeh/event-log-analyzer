@@ -76,16 +76,9 @@ def test_error_rate(sample_events):
     assert result == pytest.approx(1 / 3)
 
 
-@pytest.mark.parametrize(
-    "prefix",
-    [
-        "",
-        "sep=\t\n",
-    ],
-)
-def test_load_events(prefix, tmp_path):
-    file_path = tmp_path / "test.csv"
 
+@pytest.fixture
+def valid_log_data():
     headers = [
         "Event number", "Timestamp", "Severity",
         "Object name", "Object ID", "Event ID", "Event name",
@@ -96,6 +89,23 @@ def test_load_events(prefix, tmp_path):
         "Object A", "10", "100", "Testing",
         "Test event", "", "", "",
     ]
+
+    return headers, row
+
+
+@pytest.mark.parametrize(
+    "prefix",
+    [
+        "",
+        "sep=\t\n",
+    ],
+)
+
+
+def test_load_events(prefix, tmp_path, valid_log_data):
+    file_path = tmp_path / "test.csv"
+
+    headers, row = valid_log_data
 
     file_path.write_text(
         prefix
@@ -117,3 +127,101 @@ def test_load_events(prefix, tmp_path):
     assert event.object_name == "Object A"
     assert event.name == "Testing"
     assert event.remedy == ""
+
+
+def test_load_events_rejects_empty_file(tmp_path):
+    file_path = tmp_path / "test.csv"
+    file_path.write_text("", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="no column headers"):
+        load_events(file_path)
+
+
+def test_load_events_rejects_missing_file(tmp_path):
+    file_path = tmp_path / "missing.csv"
+
+    with pytest.raises(FileNotFoundError):
+        load_events(file_path)
+
+def test_load_events_rejects_unknown_severity(tmp_path, valid_log_data):
+    file_path = tmp_path / "test.csv"
+    headers, row = valid_log_data
+
+    severity_index = headers.index("Severity")
+    row[severity_index] = "Critical"
+
+    file_path.write_text(
+        "\t".join(headers)
+        + "\n"
+        + "\t".join(row)
+        + "\n"
+    )
+
+    with pytest.raises(ValueError, match="Unknown severity"):
+        load_events(file_path)
+
+
+@pytest.mark.parametrize(
+    "column_name",
+    [
+        "Event number",
+        "Object ID",
+        "Event ID"
+    ],
+)
+
+
+def test_load_events_rejects_invalid_integer(
+    tmp_path, valid_log_data, column_name
+):
+    file_path = tmp_path / "test.csv"
+    headers, row = valid_log_data
+
+    column = headers.index(column_name)
+    row[column] = "not a number"
+
+    file_path.write_text(
+        "\t".join(headers)
+        + "\n"
+        + "\t".join(row)
+        + "\n"
+    )
+
+    with pytest.raises(ValueError):
+        load_events(file_path)
+
+
+def test_load_events_rejects_missing_header(tmp_path, valid_log_data):
+    file_path = tmp_path / "test.csv"
+    headers, row = valid_log_data
+
+    column = headers.index("Object ID")
+    headers.pop(column)
+    row.pop(column)
+
+    file_path.write_text(
+        "\t".join(headers)
+        + "\n"
+        + "\t".join(row)
+        + "\n"
+    )
+
+    with pytest.raises(ValueError, match="Missing headers"):
+        load_events(file_path)
+
+
+def test_load_events_rejects_incomplete_row(tmp_path, valid_log_data):
+    file_path = tmp_path / "test.csv"
+    headers, row = valid_log_data
+
+    row.pop()
+
+    file_path.write_text(
+        "\t".join(headers)
+        + "\n"
+        + "\t".join(row)
+        + "\n"
+    )
+
+    with pytest.raises(ValueError, match=f"Missing fields"):
+        load_events(file_path)
