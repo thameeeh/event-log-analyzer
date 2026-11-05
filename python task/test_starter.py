@@ -2,6 +2,7 @@ import pytest
 from starter import EventLog
 from starter import EventSeverity
 from starter import Event
+from starter import load_events
 from datetime import datetime
 
 
@@ -39,6 +40,7 @@ def sample_events():
         make_event(3, EventSeverity.ERROR, object_name="Object A"),
     ]
 
+
 @pytest.mark.parametrize(
     "min_severity, expected_numbers",
     [
@@ -72,3 +74,46 @@ def test_error_rate(sample_events):
     log = EventLog(sample_events)
     result = log.error_rate
     assert result == pytest.approx(1 / 3)
+
+
+@pytest.mark.parametrize(
+    "prefix",
+    [
+        "",
+        "sep=\t\n",
+    ],
+)
+def test_load_events(prefix, tmp_path):
+    file_path = tmp_path / "test.csv"
+
+    headers = [
+        "Event number", "Timestamp", "Severity",
+        "Object name", "Object ID", "Event ID", "Event name",
+        "Description", "Remedy", "Readable", "Raw",
+    ]
+    row = [
+        "42", "2026-01-01 12:00:00", "Warning",
+        "Object A", "10", "100", "Testing",
+        "Test event", "", "", "",
+    ]
+
+    file_path.write_text(
+        prefix
+        + "\t".join(headers)
+        + "\n"
+        + "\t".join(row)
+        + "\n"
+    )
+
+    actual = load_events(file_path)
+
+    assert len(actual) == 1
+
+    event = actual[0]
+
+    assert event.number == 42
+    assert event.timestamp == datetime(2026, 1, 1, 12, 0, 0)
+    assert event.severity == EventSeverity.WARNING
+    assert event.object_name == "Object A"
+    assert event.name == "Testing"
+    assert event.remedy == ""
