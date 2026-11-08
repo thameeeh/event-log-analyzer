@@ -53,7 +53,7 @@ def load_events(path: Path) -> list[Event]:
     :param path: variable for the location of the file
     :return: a list of event objects
     """
-    with open(path, "r", newline="") as file:
+    with open(path, "r", newline="", encoding="utf-8") as file:
         first_line = file.readline().rstrip("\r\n")
         if first_line.startswith("sep="):
             delimiter = first_line.removeprefix("sep=")
@@ -102,8 +102,8 @@ def load_events(path: Path) -> list[Event]:
             severity_name = row["Severity"].upper()
             try:
                 severity = EventSeverity[severity_name]
-            except KeyError:
-                raise ValueError(f"Unknown severity: {severity_name}")
+            except KeyError as exc:
+                raise ValueError(f"Unknown severity: {severity_name}") from exc
 
             event = Event(
                 number=int(row["Event number"]),
@@ -197,7 +197,7 @@ def main() -> None:
         events = load_events(file_path)
     except (ValueError, OSError) as error:
         print(f"Could not load the log: {error}")
-        raise SystemExit(1)
+        raise SystemExit(1) from error
 
     log = EventLog(events)
     print(f"Loaded {len(events)} events")
