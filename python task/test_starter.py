@@ -1,8 +1,11 @@
 import pytest
+import sys
+import runpy
 from starter import EventLog
 from starter import EventSeverity
 from starter import Event
 from starter import load_events
+from starter import main
 from datetime import datetime
 
 
@@ -385,3 +388,63 @@ def test_load_events_rejects_invalid_timestamp(
 
     with pytest.raises(ValueError):
         load_events(file_path)
+
+
+def test_main_reports_missing_file(tmp_path, monkeypatch, capsys):
+    missing_path = tmp_path / "missing.csv"
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["starter.py", str(missing_path)],
+    )
+
+    with pytest.raises(SystemExit) as exit_info:
+        main()
+
+    assert exit_info.value.code == 1
+
+    captured = capsys.readouterr()
+    assert "Could not load the log:" in captured.out
+
+
+def test_main_requires_file_path(monkeypatch, capsys):
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["starter.py"],
+    )
+
+    with pytest.raises(SystemExit) as exit_info:
+        main()
+
+    assert exit_info.value.code == 2
+
+    captured = capsys.readouterr().err
+    assert "required: file_path" in captured
+
+
+def test_main_loads_valid_file(
+        tmp_path, monkeypatch, capsys, valid_log_data
+        ):
+
+    file_path = tmp_path / "test.csv"
+    headers, row = valid_log_data
+
+    file_path.write_text(
+        "\t".join(headers)
+        + "\n"
+        + "\t".join(row)
+    )
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["starter.py", str(file_path)],
+    )
+
+    runpy.run_module("starter", run_name="__main__")
+
+    output = capsys.readouterr().out
+    assert "Loaded 1 events" in output
+    assert "{'Object A': 1}" in output
