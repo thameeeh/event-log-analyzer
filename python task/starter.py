@@ -47,6 +47,56 @@ class Event:
         return str(self)
 
 
+def read_delimiter(log_file):
+    """
+    Read the declared delimiter and leave the file positioned at the header.
+    Default to a tab when there is no sep= declaration
+    :param log_file: the file from load_events()
+    :return: delimiter
+    """
+    first_line = log_file.readline().rstrip("\r\n")
+
+    if first_line.startswith("sep="):
+        delimiter = first_line.removeprefix("sep=")
+        if len(delimiter) != 1:
+            raise ValueError("Invalid delimiter")
+    else:
+        log_file.seek(0)
+        delimiter = "\t"
+
+    return delimiter
+
+
+def event_from_row(row):
+    """
+    Build an event from a row with all required fields.
+    :return: an event object
+    """
+
+    severity_name = row["Severity"].upper()
+    try:
+        severity = EventSeverity[severity_name]
+    except KeyError as exc:
+        raise ValueError(f"Unknown severity: {severity_name}") from exc
+
+    event = Event(
+        number=int(row["Event number"]),
+        timestamp=datetime.strptime(row["Timestamp"],
+                                    "%Y-%m-%d %H:%M:%S"),
+        severity=severity,
+        object_name=row["Object name"],
+        object_id=int(row["Object ID"]),
+        id=int(row["Event ID"]),
+        name=row["Event name"],
+        description=row["Description"],
+        remedy=row["Remedy"],
+        readable=row["Readable"],
+        raw=row["Raw"],
+    )
+
+    return event
+
+
 def load_events(path: Path) -> list[Event]:
     """
     This function loads all events from the csv file and returns a list of those object events
@@ -54,18 +104,11 @@ def load_events(path: Path) -> list[Event]:
     :return: a list of event objects
     """
     with open(path, "r", newline="", encoding="utf-8") as file:
-        first_line = file.readline().rstrip("\r\n")
-        if first_line.startswith("sep="):
-            delimiter = first_line.removeprefix("sep=")
-            if len(delimiter) != 1:
-                raise ValueError("Invalid delimiter")
-        else:
-            file.seek(0)
-            delimiter = "\t"
 
+        delimiter = read_delimiter(file)
         reader = csv.DictReader(file, delimiter=delimiter)
-
         headers = reader.fieldnames
+
         if not headers:
             raise ValueError("The file has no column headers. (Check if the file is empty)")
 
@@ -99,28 +142,7 @@ def load_events(path: Path) -> list[Event]:
                 missing_names = ", ".join(missing_fields)
                 raise ValueError(f"Missing fields: {missing_names}")
 
-            severity_name = row["Severity"].upper()
-            try:
-                severity = EventSeverity[severity_name]
-            except KeyError as exc:
-                raise ValueError(f"Unknown severity: {severity_name}") from exc
-
-            event = Event(
-                number=int(row["Event number"]),
-                timestamp = datetime.strptime(row["Timestamp"],
-                                            "%Y-%m-%d %H:%M:%S"),
-                severity = severity,
-                object_name = row["Object name"],
-                object_id = int(row["Object ID"]),
-                id = int(row["Event ID"]),
-                name = row["Event name"],
-                description = row["Description"],
-                remedy = row["Remedy"],
-                readable = row["Readable"],
-                raw = row["Raw"],
-            )
-
-            events.append(event)
+            events.append(event_from_row(row))
 
     return events
 
