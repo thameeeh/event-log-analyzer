@@ -18,8 +18,10 @@ class EventSeverity(IntEnum):
     WARNING = 1
     ERROR = 2
 
+
+# The event fields mirror the 11 columns in the log
 @dataclass
-class Event:
+class Event: # pylint: disable=too-many-instance-attributes
     """
     The class event represents a single event in the event log
     """
