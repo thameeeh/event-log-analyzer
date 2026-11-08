@@ -1,3 +1,6 @@
+"""
+Load and analyze event logs from delimited text files
+"""
 import argparse
 from pathlib import Path
 from enum import IntEnum
@@ -8,6 +11,9 @@ import csv
 
 
 class EventSeverity(IntEnum):
+    """
+    Event severity levels in increasing order
+    """
     INFO = 0
     WARNING = 1
     ERROR = 2
@@ -120,6 +126,9 @@ def load_events(path: Path) -> list[Event]:
 
 
 class EventLog:
+    """
+    Filter and summarize a collection of loaded events
+    """
     def __init__(self, events: list[Event]) -> None:
         self._events = events
 
@@ -147,8 +156,7 @@ class EventLog:
     @property
     def error_rate(self) -> float:
         """
-        This function calculates the error rate of the events log
-        returns 0.0 if the log is empty.
+        Return the fraction of events at ERROR or higher, or 0.0 for an empty log
         :return: the fraction of events that are errors
         """
         if not self._events:
@@ -163,10 +171,17 @@ class EventLog:
 
     @property
     def events(self) -> list[Event]:
+        """
+        This function returns the stored event list
+        :return: stored event list
+        """
         return self._events
 
 
 def main() -> None:
+    """
+    Load a log from a command-line path and print its statistics and events
+    """
     parser = argparse.ArgumentParser(
         description="Read and analyze an event log."
     )
