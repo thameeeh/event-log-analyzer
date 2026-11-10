@@ -1,12 +1,18 @@
-import pytest
+"""Tests for event loading, analysis and command-line behavior"""
+# Test names describe the behavior of the test
+# pylint: disable=missing-function-docstring
+
 import sys
 import runpy
+
+from datetime import datetime
 from starter import EventLog
 from starter import EventSeverity
 from starter import Event
 from starter import load_events
 from starter import main
-from datetime import datetime
+
+import pytest
 
 
 def make_event(
@@ -64,8 +70,8 @@ def test_error_rate_for_uniform_severity(
     assert actual == pytest.approx(expected_rate)
 
 
-@pytest.fixture
-def sample_events():
+@pytest.fixture(name="sample_events")
+def fixture_sample_events():
     return [
         make_event(1, EventSeverity.INFO, object_name="Object A"),
         make_event(2, EventSeverity.WARNING, object_name="Object B"),
@@ -105,6 +111,7 @@ def test_count_by_object_returns_empty_dict_for_empty_log():
     log = EventLog([])
     actual = log.count_by_object()
 
+    # pylint: disable-next=use-implicit-booleaness-not-comparison
     assert actual == {}
 
 
@@ -122,8 +129,11 @@ def test_error_rate(sample_events):
     assert result == pytest.approx(1 / 3)
 
 
-@pytest.fixture
-def valid_log_data():
+@pytest.fixture(name="valid_log_data")
+def fixture_valid_log_data():
+    """
+    Return the column headers and one valid event row for loader tests
+    """
     headers = [
         "Event number", "Timestamp", "Severity",
         "Object name", "Object ID", "Event ID", "Event name",
@@ -331,7 +341,7 @@ def test_load_events_rejects_incomplete_row(
         + "\n"
     )
 
-    with pytest.raises(ValueError, match=f"Missing fields"):
+    with pytest.raises(ValueError, match="Missing fields"):
         load_events(file_path)
 
 
