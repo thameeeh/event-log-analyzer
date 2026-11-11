@@ -533,3 +533,39 @@ def test_bluetooth_session_durations_for_multiple_good_connections():
             timedelta(seconds=100),
             timedelta(seconds=60),
             ]
+
+@pytest.mark.parametrize(
+    "actions",
+    [
+        [],
+        [("CONNECT", 0)],
+        [("DISCONNECT", 0)],
+        [("STATUS", 0)]
+    ]
+)
+
+
+def test_no_complete_bluetooth_sessions(actions):
+    events = make_bluetooth_events(actions)
+    log = EventLog(events)
+    actual = log.bluetooth_session_durations()
+
+    # pylint: disable-next=use-implicit-booleaness-not-comparison
+    assert actual == []
+
+
+def test_unrelated_objects_events_dont_affect_bluetooth_session():
+    events = make_bluetooth_events([
+        ("CONNECT", 0),
+        ("CONNECT", 60),
+        ("DISCONNECT", 90),
+        ("DISCONNECT", 120),
+        ])
+
+    events[1].object_name = "OTHER"
+    events[2].object_name = "OTHER"
+
+    log = EventLog(events)
+    actual = log.bluetooth_session_durations()
+
+    assert actual == [timedelta(seconds=120)]
