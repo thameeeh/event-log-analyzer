@@ -38,6 +38,23 @@ def make_event(
     )
 
 
+def make_bluetooth_events(actions):
+    start = datetime(2026, 1, 1, 12, 0, 0)
+    events = []
+
+    for number, (name, seconds) in enumerate(actions, start=1):
+        event = make_event(
+            number=number,
+            severity=EventSeverity.INFO,
+            name=name,
+            timestamp=start + timedelta(seconds=seconds),
+            object_name="BLUETOOTH",
+        )
+        events.append(event)
+
+    return events
+
+
 def test_empty_log_has_zero_error_rate():
     log = EventLog([])
     result = log.error_rate
@@ -464,50 +481,55 @@ def test_main_loads_valid_file(
 
 
 def test_bluetooth_session_durations_for_one_session():
-    first_event = make_event(
-        number=1,
-        severity=EventSeverity.INFO,
-        name="CONNECT",
-        timestamp=datetime(2026, 1, 1, 12, 0, 0),
-        object_name="BLUETOOTH",
-        )
-    second_event = make_event(
-        number=2,
-        severity=EventSeverity.INFO,
-        name="DISCONNECT",
-        timestamp=datetime(2026, 1, 1, 12, 2, 30),
-        object_name="BLUETOOTH",
-        )
-    log = EventLog([first_event, second_event])
+    events = make_bluetooth_events([
+        ("CONNECT", 0),
+        ("DISCONNECT", 150),
+        ])
+
+    log = EventLog(events)
     actual = log.bluetooth_session_durations()
 
     assert actual == [timedelta(seconds=150)]
 
 
 def test_bluetooth_session_durations_for_multiple_disconnects():
-    first_event = make_event(
-        number=1,
-        severity=EventSeverity.INFO,
-        name="CONNECT",
-        timestamp=datetime(2026, 1, 1, 12, 0, 0),
-        object_name="BLUETOOTH",
-        )
-    second_event = make_event(
-        number=2,
-        severity=EventSeverity.INFO,
-        name="DISCONNECT",
-        timestamp=datetime(2026, 1, 1, 12, 2, 30),
-        object_name="BLUETOOTH",
-        )
-    third_event = make_event(
-        number=3,
-        severity=EventSeverity.INFO,
-        name="DISCONNECT",
-        timestamp=datetime(2026, 1, 1, 12, 3, 30),
-        object_name="BLUETOOTH",
-        )
+    events = make_bluetooth_events([
+        ("CONNECT", 0),
+        ("DISCONNECT", 150),
+        ("DISCONNECT", 360),
+        ])
 
-    log = EventLog([first_event, second_event, third_event])
+    log = EventLog(events)
     actual = log.bluetooth_session_durations()
 
     assert actual == [timedelta(seconds=150)]
+
+
+def test_bluetooth_session_durations_for_multiple_connections():
+    events = make_bluetooth_events([
+        ("CONNECT", 0),
+        ("CONNECT", 300),
+        ("DISCONNECT", 360),
+        ])
+
+    log = EventLog(events)
+    actual = log.bluetooth_session_durations()
+
+    assert actual == [timedelta(seconds=60)]
+
+
+def test_bluetooth_session_durations_for_multiple_good_connections():
+    events = make_bluetooth_events([
+        ("CONNECT", 0),
+        ("DISCONNECT", 100),
+        ("CONNECT", 300),
+        ("DISCONNECT", 360),
+        ])
+
+    log = EventLog(events)
+    actual = log.bluetooth_session_durations()
+
+    assert actual == [
+            timedelta(seconds=100),
+            timedelta(seconds=60),
+            ]
