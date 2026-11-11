@@ -5,6 +5,7 @@ import argparse
 from pathlib import Path
 from enum import IntEnum
 from datetime import datetime
+from datetime import timedelta
 from dataclasses import dataclass
 from collections import Counter
 import csv
@@ -177,6 +178,26 @@ class EventLog:
 
         return dict(counts)
 
+    def bluetooth_session_durations(self) -> list[timedelta]:
+        """
+        Calculate the durations of completed Bluetooth sessions.
+        :return: a list of timedelta objects
+        """
+        duration_list = []
+        connection_started = None
+
+        for one_event in self._events:
+            if one_event.object_name == "BLUETOOTH":
+                if one_event.name == "CONNECT":
+                    connection_started = one_event.timestamp
+                elif one_event.name == "DISCONNECT":
+                    if connection_started is not None:
+                        duration = one_event.timestamp - connection_started
+                        duration_list.append(duration)
+                        connection_started = None
+
+        return duration_list
+
     @property
     def error_rate(self) -> float:
         """
@@ -228,7 +249,8 @@ def main() -> None:
     print(len(log.filter_by_severity(EventSeverity.ERROR)))
     print(log.count_by_object())
     print(log.error_rate)
-    print(log.events)
+    #print(log.events)
+    print(log.bluetooth_session_durations())
 
 if __name__ == "__main__":
     main()

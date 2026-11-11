@@ -6,6 +6,7 @@ import sys
 import runpy
 
 from datetime import datetime
+from datetime import timedelta
 from starter import EventLog
 from starter import EventSeverity
 from starter import Event
@@ -18,16 +19,18 @@ import pytest
 def make_event(
             number: int,
             severity: EventSeverity,
+            name: str = "test",
+            timestamp: datetime = datetime(2026, 1, 1),
             object_name: str = "Object A",
         ) -> Event:
     return Event(
         number=number,
-        timestamp=datetime(2026, 1, 1),
+        timestamp=timestamp,
         severity=severity,
         object_name=object_name,
         object_id=10,
         id=100,
-        name="Test",
+        name=name,
         description="Testing event",
         remedy="",
         readable="",
@@ -458,3 +461,53 @@ def test_main_loads_valid_file(
     output = capsys.readouterr().out
     assert "Loaded 1 events" in output
     assert "{'Object A': 1}" in output
+
+
+def test_bluetooth_session_durations_for_one_session():
+    first_event = make_event(
+        number=1,
+        severity=EventSeverity.INFO,
+        name="CONNECT",
+        timestamp=datetime(2026, 1, 1, 12, 0, 0),
+        object_name="BLUETOOTH",
+        )
+    second_event = make_event(
+        number=2,
+        severity=EventSeverity.INFO,
+        name="DISCONNECT",
+        timestamp=datetime(2026, 1, 1, 12, 2, 30),
+        object_name="BLUETOOTH",
+        )
+    log = EventLog([first_event, second_event])
+    actual = log.bluetooth_session_durations()
+
+    assert actual == [timedelta(seconds=150)]
+
+
+def test_bluetooth_session_durations_for_multiple_disconnects():
+    first_event = make_event(
+        number=1,
+        severity=EventSeverity.INFO,
+        name="CONNECT",
+        timestamp=datetime(2026, 1, 1, 12, 0, 0),
+        object_name="BLUETOOTH",
+        )
+    second_event = make_event(
+        number=2,
+        severity=EventSeverity.INFO,
+        name="DISCONNECT",
+        timestamp=datetime(2026, 1, 1, 12, 2, 30),
+        object_name="BLUETOOTH",
+        )
+    third_event = make_event(
+        number=3,
+        severity=EventSeverity.INFO,
+        name="DISCONNECT",
+        timestamp=datetime(2026, 1, 1, 12, 3, 30),
+        object_name="BLUETOOTH",
+        )
+
+    log = EventLog([first_event, second_event, third_event])
+    actual = log.bluetooth_session_durations()
+
+    assert actual == [timedelta(seconds=150)]
