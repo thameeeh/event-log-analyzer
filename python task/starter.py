@@ -100,9 +100,10 @@ def event_from_row(row):
     return event
 
 
-def load_events(path: Path) -> list[Event]:
+def load_events(path: Path, skip_invalid: bool = False) -> list[Event]:
     """
     This function loads all events from the csv file and returns a list of those object events
+    :param skip_invalid: enabled means we skip malformed rows
     :param path: variable for the location of the file
     :return: a list of event objects
     """
@@ -136,16 +137,21 @@ def load_events(path: Path) -> list[Event]:
 
         for row in reader:
 
-            missing_fields = []
-            for header in required_headers:
-                if row[header] is None:
-                    missing_fields.append(header)
+            try:
+                missing_fields = []
+                for header in required_headers:
+                    if row[header] is None:
+                        missing_fields.append(header)
 
-            if missing_fields:
-                missing_names = ", ".join(missing_fields)
-                raise ValueError(f"Missing fields: {missing_names}")
+                if missing_fields:
+                    missing_names = ", ".join(missing_fields)
+                    raise ValueError(f"Missing fields: {missing_names}")
 
-            events.append(event_from_row(row))
+                events.append(event_from_row(row))
+            except ValueError:
+                if skip_invalid:
+                    continue
+                raise
 
     return events
 
@@ -181,6 +187,8 @@ class EventLog:
     def bluetooth_session_durations(self) -> list[timedelta]:
         """
         Calculate the durations of completed Bluetooth sessions.
+        Consecutive CONNECT events replace the pending start time.
+        Only sessions closed by a DISCONNECT are included.
         :return: a list of timedelta objects
         """
         duration_list = []
@@ -249,7 +257,7 @@ def main() -> None:
     print(len(log.filter_by_severity(EventSeverity.ERROR)))
     print(log.count_by_object())
     print(log.error_rate)
-    #print(log.events)
+    print(log.events)
     print(log.bluetooth_session_durations())
 
 if __name__ == "__main__":

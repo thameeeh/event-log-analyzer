@@ -569,3 +569,30 @@ def test_unrelated_objects_events_dont_affect_bluetooth_session():
     actual = log.bluetooth_session_durations()
 
     assert actual == [timedelta(seconds=120)]
+
+
+def test_load_events_skips_invalid_row_when_enabled(
+        valid_log_data, tmp_path
+        ):
+
+    file_path = tmp_path / "mixed_events.csv"
+    headers, valid_row = valid_log_data
+
+    content = "\t".join(headers) + "\n"
+
+    for number, severity in [
+        ("1", "Info"),
+        ("2", "Critical"),
+        ("3", "Warning"),
+    ]:
+        row = valid_row.copy()
+        row[headers.index("Event number")] = number
+        row[headers.index("Severity")] = severity
+
+        content += "\t".join(row) + "\n"
+
+    file_path.write_text(content, encoding="utf-8")
+
+    actual = load_events(file_path, skip_invalid=True)
+
+    assert [event.number for event in actual] == [1, 3]
