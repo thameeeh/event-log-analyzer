@@ -256,11 +256,19 @@ def main() -> None:
         type=Path,
         help="Path to the event log",
     )
+    parser.add_argument(
+        "--skip-invalid",
+        action="store_true",
+        help="Skip invalid events and continue loading",
+    )
     args = parser.parse_args()
     file_path = args.file_path
 
     try:
-        events = load_events(file_path)
+        events = load_events(
+            file_path,
+            skip_invalid=args.skip_invalid
+            )
     except (ValueError, OSError) as error:
         print(f"Could not load the log: {error}")
         raise SystemExit(1) from error

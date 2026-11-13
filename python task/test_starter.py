@@ -572,10 +572,8 @@ def test_unrelated_objects_events_dont_affect_bluetooth_session():
     assert actual == [timedelta(seconds=120)]
 
 
-def test_load_events_skips_invalid_row_when_enabled(
-        valid_log_data, tmp_path, caplog
-        ):
-
+@pytest.fixture(name="log_with_invalid_row")
+def fixture_log_with_invalid_row(tmp_path, valid_log_data):
     file_path = tmp_path / "mixed_events.csv"
     headers, valid_row = valid_log_data
 
@@ -594,6 +592,14 @@ def test_load_events_skips_invalid_row_when_enabled(
 
     file_path.write_text(content, encoding="utf-8")
 
+    return file_path
+
+def test_load_events_skips_invalid_row_when_enabled(
+        log_with_invalid_row, caplog
+        ):
+
+    file_path = log_with_invalid_row
+
     with caplog.at_level(logging.WARNING, logger="starter"):
         actual = load_events(file_path, skip_invalid=True)
 
@@ -608,6 +614,54 @@ def test_load_events_skips_invalid_row_when_enabled(
     assert file_path.name in message
     assert "Unknown severity: CRITICAL" in message
 
+
+def test_main_can_skip_invalid_rows(
+        log_with_invalid_row,
+        caplog,
+        capsys,
+        monkeypatch,
+        ):
+
+    file_path = log_with_invalid_row
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["starter.py", str(file_path), "--skip-invalid"],
+    )
+
+    runpy.run_module("starter", run_name="__main__")
+
+    record = caplog.records[0]
+    message = record.getMessage()
+    assert "Unknown severity: CRITICAL" in message
+
+    output = capsys.readouterr().out
+    assert "Loaded 2 events" in output
+
+
+def test_main_rejects_invalid_rows_by_default(
+        log_with_invalid_row,
+        capsys,
+        monkeypatch,
+        ):
+
+    file_path = log_with_invalid_row
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["starter.py", str(file_path)],
+    )
+
+    with pytest.raises(SystemExit) as exit_info:
+        runpy.run_module("starter", run_name="__main__")
+
+    assert exit_info.value.code == 1
+
+    output = capsys.readouterr().out
+    assert "Could not load the log" in output
+    assert "Unknown severity: CRITICAL" in output
 
 @pytest.mark.parametrize(
     "column_name, invalid_value",
