@@ -1,7 +1,7 @@
 # Event Log Analyzer
 
-The analyzer loads event logs, filters events by severity, counts events by object
-and calculates the error rate.
+The analyzer loads event logs, filters events by severity, counts events by object, 
+calculates the error rate and reports a BLUETOOTH session length
 
 ## Run the analyzer
 
@@ -11,14 +11,30 @@ In the repository root run the following:
 ```
 python "python task/starter.py" "path/to/your-log.csv"
 ```
-Replace path/to/your-log.csv with an actual path to a log file.
+Replace `path/to/your-log.csv` with an actual path to a log file.
 
-Or run it from gui.py:
+Or run it from `gui.py`:
 
 ```
 python "python task/gui.py"
 ```
 Select your log file in the window that opens, then follow the prompts in the terminal.
+
+## Handling invalid rows
+
+By default, `starter.py` stops when it encounters an invalid event row.
+
+Use `--skip-invalid` to skip malformed rows anda continue loading:
+
+```powershell
+python "python task/starter.py" "path/to/your-log.csv" --skip-invalid
+```
+Each skipped row produces a warning containing the filename, data-row number and reason.
+Data-row numbering starts at 1 and excludes the header and optional `sep=` line
+
+Statistics are calculated from the successfully loaded events
+
+File-level problems such as missing headers or an invalid delimiter declaration still stop loading.
 
 ## Input format
 
