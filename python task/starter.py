@@ -2,6 +2,7 @@
 Load and analyze event logs from delimited text files
 """
 import argparse
+import logging
 from pathlib import Path
 from enum import IntEnum
 from datetime import datetime
@@ -9,6 +10,9 @@ from datetime import timedelta
 from dataclasses import dataclass
 from collections import Counter
 import csv
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 class EventSeverity(IntEnum):
@@ -135,7 +139,7 @@ def load_events(path: Path, skip_invalid: bool = False) -> list[Event]:
 
         events = []
 
-        for row in reader:
+        for row_number, row in enumerate(reader, start=1):
 
             try:
                 missing_fields = []
@@ -148,10 +152,16 @@ def load_events(path: Path, skip_invalid: bool = False) -> list[Event]:
                     raise ValueError(f"Missing fields: {missing_names}")
 
                 events.append(event_from_row(row))
-            except ValueError:
-                if skip_invalid:
-                    continue
-                raise
+            except ValueError as error:
+                if not skip_invalid:
+                    raise
+
+                LOGGER.warning(
+                    "Skipping data row %d in %s: %s",
+                    row_number,
+                    path.name,
+                    error,
+                )
 
     return events
 

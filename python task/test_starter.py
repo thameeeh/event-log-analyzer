@@ -4,6 +4,7 @@
 
 import sys
 import runpy
+import logging
 
 from datetime import datetime
 from datetime import timedelta
@@ -572,7 +573,7 @@ def test_unrelated_objects_events_dont_affect_bluetooth_session():
 
 
 def test_load_events_skips_invalid_row_when_enabled(
-        valid_log_data, tmp_path
+        valid_log_data, tmp_path, caplog
         ):
 
     file_path = tmp_path / "mixed_events.csv"
@@ -593,6 +594,16 @@ def test_load_events_skips_invalid_row_when_enabled(
 
     file_path.write_text(content, encoding="utf-8")
 
-    actual = load_events(file_path, skip_invalid=True)
+    with caplog.at_level(logging.WARNING, logger="starter"):
+        actual = load_events(file_path, skip_invalid=True)
 
     assert [event.number for event in actual] == [1, 3]
+    assert len(caplog.records) == 1
+
+    record = caplog.records[0]
+    assert record.levelno == logging.WARNING
+
+    message = record.getMessage()
+    assert "data row 2" in message
+    assert file_path.name in message
+    assert "Unknown severity: CRITICAL" in message
