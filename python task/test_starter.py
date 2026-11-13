@@ -607,3 +607,70 @@ def test_load_events_skips_invalid_row_when_enabled(
     assert "data row 2" in message
     assert file_path.name in message
     assert "Unknown severity: CRITICAL" in message
+
+
+@pytest.mark.parametrize(
+    "column_name, invalid_value",
+    [
+        ("Event number", "not-a-number"),
+        ("Object ID", "not-a-number"),
+        ("Event ID", "not-a-number"),
+        ("Timestamp", "not-a-date"),
+    ],
+)
+def test_load_events_recovers_from_invalid_values(
+        column_name, invalid_value, tmp_path, valid_log_data
+        ):
+    file_path = tmp_path / "mixed_events.csv"
+    headers, valid_row = valid_log_data
+
+    content = "\t".join(headers) + "\n"
+
+    for number, severity in [
+        ("1", "Info"),
+        ("2", "Warning"),
+        ("3", "Warning"),
+    ]:
+        row = valid_row.copy()
+
+        row[headers.index("Event number")] = number
+        row[headers.index("Severity")] = severity
+
+        if number == "2":
+            row[headers.index(column_name)] = invalid_value
+
+        content += "\t".join(row) + "\n"
+
+    file_path.write_text(content, encoding="utf-8")
+    actual = load_events(file_path, skip_invalid=True)
+
+    assert [event.number for event in actual] == [1, 3]
+
+
+def test_load_events_recovers_from_incomplete_row(
+        tmp_path, valid_log_data
+        ):
+    file_path = tmp_path / "mixed_events.csv"
+    headers, valid_row = valid_log_data
+
+    content = "\t".join(headers) + "\n"
+
+    for number, severity in [
+        ("1", "Info"),
+        ("2", "Warning"),
+        ("3", "Warning"),
+    ]:
+        row = valid_row.copy()
+
+        row[headers.index("Event number")] = number
+        row[headers.index("Severity")] = severity
+
+        if number == "2":
+            row.pop()
+
+        content += "\t".join(row) + "\n"
+
+    file_path.write_text(content, encoding="utf-8")
+    actual = load_events(file_path, skip_invalid=True)
+
+    assert [event.number for event in actual] == [1, 3]
