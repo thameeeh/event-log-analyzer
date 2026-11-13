@@ -674,3 +674,32 @@ def test_load_events_recovers_from_incomplete_row(
     actual = load_events(file_path, skip_invalid=True)
 
     assert [event.number for event in actual] == [1, 3]
+
+
+def test_load_events_recovers_from_extra_fields(
+        tmp_path, valid_log_data
+        ):
+    file_path = tmp_path / "mixed_events.csv"
+    headers, valid_row = valid_log_data
+
+    content = "\t".join(headers) + "\n"
+
+    for number, severity in [
+        ("1", "Info"),
+        ("2", "Warning"),
+        ("3", "Warning"),
+    ]:
+        row = valid_row.copy()
+
+        row[headers.index("Event number")] = number
+        row[headers.index("Severity")] = severity
+
+        if number == "2":
+            row.append("Extra field")
+
+        content += "\t".join(row) + "\n"
+
+    file_path.write_text(content, encoding="utf-8")
+    actual = load_events(file_path, skip_invalid=True)
+
+    assert [event.number for event in actual] == [1, 3]

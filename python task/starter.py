@@ -142,6 +142,9 @@ def load_events(path: Path, skip_invalid: bool = False) -> list[Event]:
         for row_number, row in enumerate(reader, start=1):
 
             try:
+                if None in row:
+                    raise ValueError("Extra fields in row")
+
                 missing_fields = []
                 for header in required_headers:
                     if row[header] is None:
