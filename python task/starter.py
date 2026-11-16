@@ -71,7 +71,6 @@ def event_from_row(row):
     Build an event from a row with all required fields.
     :return: an event object
     """
-
     severity_name = row["Severity"].upper().strip()
     try:
         severity = EventSeverity[severity_name]
@@ -130,18 +129,23 @@ def load_events(path: Path) -> list[Event]:
 
         events = []
 
-        for row in reader:
+        for row_number, row in enumerate(reader, start=1):
 
-            missing_fields = []
-            for header in required_headers:
-                if row[header] is None:
-                    missing_fields.append(header)
+            try:
+                missing_fields = []
+                for header in required_headers:
+                    if row[header] is None:
+                        missing_fields.append(header)
 
-            if missing_fields:
-                missing_names = ", ".join(missing_fields)
-                raise ValueError(f"Missing fields: {missing_names}")
+                if missing_fields:
+                    missing_names = ", ".join(missing_fields)
+                    raise ValueError(f"Missing fields: {missing_names}")
 
-            events.append(event_from_row(row))
+                events.append(event_from_row(row))
+            except ValueError as error:
+                raise ValueError(
+                    f"Invalid data row {row_number} in {path.name}: {error}"
+                ) from error
 
     return events
 

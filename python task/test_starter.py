@@ -36,6 +36,17 @@ def make_event(
     )
 
 
+def write_log(file_path, headers, rows):
+    """
+    write a tab-separated log for a test
+    """
+    lines = ["\t".join(headers)]
+
+    for row in rows:
+        lines.append("\t".join(row))
+
+    file_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
 def test_empty_log_has_zero_error_rate():
     log = EventLog([])
     result = log.error_rate
@@ -277,6 +288,61 @@ def test_load_events_rejects_unknown_severity(
 
 
 @pytest.mark.parametrize(
+    "column_name, invalid_value, expected_reason",
+    [
+        ("Severity", "Critical", "Unknown severity: CRITICAL"),
+        ("Event number", "not-a-number", "invalid literal"),
+        ("Object ID", "not-a-number", "invalid literal"),
+        ("Event ID", "not-a-number", "invalid literal"),
+        ("Timestamp", "not-a-timestamp", "does not match format"),
+    ],
+)
+def test_load_events_reports_invalid_value_location(
+        tmp_path, valid_log_data, column_name, invalid_value, expected_reason
+        ):
+    file_path = tmp_path / "invalid_values.csv"
+    headers, valid_row = valid_log_data
+
+    invalid_row = valid_row.copy()
+    invalid_row[headers.index("Event number")] = "99"
+    invalid_row[headers.index(column_name)] = invalid_value
+
+    write_log(file_path, headers, [valid_row, invalid_row])
+
+    with pytest.raises(ValueError) as error_info:
+        load_events(file_path)
+
+    message = str(error_info.value)
+
+    assert file_path.name in message
+    assert "data row 2" in message
+    assert expected_reason in message
+    assert isinstance(error_info.value.__cause__, ValueError)
+
+
+def test_load_events_reports_incomplete_row_location(
+    tmp_path, valid_log_data
+):
+    file_path = tmp_path / "incomplete_row.csv"
+    headers, valid_row = valid_log_data
+
+    incomplete_row = valid_row.copy()
+    incomplete_row[headers.index("Event number")] = "99"
+    incomplete_row.pop()
+
+    write_log(file_path, headers, [valid_row, incomplete_row])
+
+    with pytest.raises(ValueError) as error_info:
+        load_events(file_path)
+
+    message = str(error_info.value)
+
+    assert file_path.name in message
+    assert "data row 2" in message
+    assert "Missing fields: Raw" in message
+    assert isinstance(error_info.value.__cause__, ValueError)
+
+@pytest.mark.parametrize(
     "column_name",
     [
         "Event number",
@@ -417,7 +483,6 @@ def test_load_events_rejects_invalid_timestamp(
 
     with pytest.raises(ValueError):
         load_events(file_path)
-
 
 def test_main_reports_missing_file(tmp_path, monkeypatch, capsys):
     missing_path = tmp_path / "missing.csv"
