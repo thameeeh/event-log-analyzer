@@ -71,7 +71,7 @@ def try_load_events(path: Path) -> list[Event] | None:
     return events
 
 
-def main(path: Path) -> None:
+def run_menu(path: Path) -> None:
     events = try_load_events(path)
 
     if events is None:
@@ -143,8 +143,7 @@ def main(path: Path) -> None:
             case _:
                 print("Unrecognized command: " + user_input)
 
-
-if __name__ == "__main__":
+def main() -> None:
     parser = argparse.ArgumentParser(
         description="Read and analyze an event log."
     )
@@ -163,7 +162,10 @@ if __name__ == "__main__":
     if file_path is None:
         print("No file path provided")
     else:
-        main(file_path)
+        run_menu(file_path)
+
+if __name__ == "__main__":
+    main()
 
     #event = load_events(Path(__file__).parent / "event_log_sample.csv")
     #log = EventLog(event)
