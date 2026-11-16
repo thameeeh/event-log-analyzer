@@ -45,9 +45,6 @@ class Event: # pylint: disable=too-many-instance-attributes
             f"{self.remedy}, {self.readable}, {self.raw}"
         )
 
-    def __repr__(self) -> str:
-        return str(self)
-
 
 def read_delimiter(log_file):
     """
@@ -75,7 +72,7 @@ def event_from_row(row):
     :return: an event object
     """
 
-    severity_name = row["Severity"].upper()
+    severity_name = row["Severity"].upper().strip()
     try:
         severity = EventSeverity[severity_name]
     except KeyError as exc:

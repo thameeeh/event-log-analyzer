@@ -11,6 +11,7 @@ from starter import EventSeverity
 from starter import Event
 from starter import load_events
 from starter import main
+from starter import event_from_row
 
 import pytest
 
@@ -344,6 +345,24 @@ def test_load_events_rejects_incomplete_row(
     with pytest.raises(ValueError, match="Missing fields"):
         load_events(file_path)
 
+@pytest.mark.parametrize(
+    "severity_text",
+    [
+        " Info",
+        " Info ",
+        "Info ",
+    ],
+)
+def test_event_from_row_accepts_severity_whitespace(
+        valid_log_data, severity_text
+        ):
+    headers, row = valid_log_data
+    row = dict(zip(headers, row))
+    row["Severity"] = severity_text
+
+    event = event_from_row(row)
+
+    assert event.severity == EventSeverity.INFO
 
 @pytest.mark.parametrize(
     "prefix",
