@@ -1,7 +1,7 @@
 from pathlib import Path
 from textwrap import dedent
 from tkinter import filedialog
-from starter import EventLog, EventSeverity, load_events
+from starter import EventLog, EventSeverity, load_events, Event
 import tkinter as tk
 import argparse
 
@@ -49,23 +49,35 @@ def show_menu() -> None:
     print(menu)
 
 
-def main(path: Path) -> None:
+def try_load_events(path: Path) -> list[Event] | None:
+    """
+    return loaded events, or None after reporting a loading error
+    """
     try:
-        event = load_events(path)
+        events = load_events(path)
     except FileNotFoundError as e:
         print(f"File not found: {e}")
-        return
+        return None
     except PermissionError as e:
         print(f"Permission error: {e}")
-        return
+        return None
     except OSError as e:
         print(f"OS error: {e}")
-        return
+        return None
     except ValueError as e:
         print(f"ValueError: {e}")
+        return None
+
+    return events
+
+
+def main(path: Path) -> None:
+    events = try_load_events(path)
+
+    if events is None:
         return
 
-    log = EventLog(event)
+    log = EventLog(events)
 
     while True:
         show_menu()
@@ -81,19 +93,10 @@ def main(path: Path) -> None:
                     print("Selection cancelled. Keeping the current log.")
                     continue
 
-                try:
-                    new_events = load_events(new_path)
-                except FileNotFoundError as e:
-                    print(f"File not found: {e}")
-                    continue
-                except PermissionError as e:
-                    print(f"Permission error: {e}")
-                    continue
-                except OSError as e:
-                    print(f"OS error: {e}")
-                    continue
-                except ValueError as e:
-                    print(f"ValueError: {e} (Keeping the current log)")
+                new_events = try_load_events(new_path)
+
+                if new_events is None:
+                    print("Keeping the current log.")
                     continue
 
                 log = EventLog(new_events)
@@ -134,8 +137,8 @@ def main(path: Path) -> None:
 
             case "5":
                 error_rate = log.error_rate
-                print(f"Error rate: {error_rate:.2%} or "
-                      f"{error_rate}")
+                print(f"Error rate: {error_rate:.2%} "
+                      f"({error_rate} as a decimal)")
 
             case _:
                 print("Unrecognized command: " + user_input)
