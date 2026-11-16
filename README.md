@@ -1,7 +1,7 @@
 # Event Log Analyzer
 
 The analyzer loads event logs, filters events by severity, counts events by object, 
-calculates the error rate and reports a BLUETOOTH session length
+calculates the error rate and reports a BLUETOOTH session durations
 
 ## Run the analyzer
 
@@ -24,7 +24,7 @@ Select your log file in the window that opens, then follow the prompts in the te
 
 By default, `starter.py` stops when it encounters an invalid event row.
 
-Use `--skip-invalid` to skip malformed rows anda continue loading:
+Use `--skip-invalid` to skip malformed rows and continue loading:
 
 ```powershell
 python "python task/starter.py" "path/to/your-log.csv" --skip-invalid
