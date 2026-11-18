@@ -2,12 +2,17 @@
 Load and analyze event logs from delimited text files
 """
 import argparse
+import logging
 from pathlib import Path
 from enum import IntEnum
 from datetime import datetime
+from datetime import timedelta
 from dataclasses import dataclass
 from collections import Counter
 import csv
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 class EventSeverity(IntEnum):
@@ -95,9 +100,10 @@ def event_from_row(row):
     return event
 
 
-def load_events(path: Path) -> list[Event]:
+def load_events(path: Path, skip_invalid: bool = False) -> list[Event]:
     """
     This function loads all events from the csv file and returns a list of those object events
+    :param skip_invalid: enabled means we skip malformed rows
     :param path: variable for the location of the file
     :return: a list of event objects
     """
@@ -132,6 +138,9 @@ def load_events(path: Path) -> list[Event]:
         for row_number, row in enumerate(reader, start=1):
 
             try:
+                if None in row:
+                    raise ValueError("Extra fields in row")
+
                 missing_fields = []
                 for header in required_headers:
                     if row[header] is None:
@@ -143,9 +152,17 @@ def load_events(path: Path) -> list[Event]:
 
                 events.append(event_from_row(row))
             except ValueError as error:
-                raise ValueError(
-                    f"Invalid data row {row_number} in {path.name}: {error}"
-                ) from error
+                if not skip_invalid:
+                    raise ValueError(
+                        f"Invalid data row {row_number} in {path.name}: {error}"
+                    ) from error
+
+                LOGGER.warning(
+                    "Skipping data row %d in %s: %s",
+                    row_number,
+                    path.name,
+                    error,
+                )
 
     return events
 
@@ -177,6 +194,28 @@ class EventLog:
         counts = Counter(object_names)
 
         return dict(counts)
+
+    def bluetooth_session_durations(self) -> list[timedelta]:
+        """
+        Calculate the durations of completed Bluetooth sessions.
+        Consecutive CONNECT events replace the pending start time.
+        Only sessions closed by a DISCONNECT are included.
+        :return: a list of timedelta objects
+        """
+        duration_list = []
+        connection_started = None
+
+        for one_event in self._events:
+            if one_event.object_name == "BLUETOOTH":
+                if one_event.name == "CONNECT":
+                    connection_started = one_event.timestamp
+                elif one_event.name == "DISCONNECT":
+                    if connection_started is not None:
+                        duration = one_event.timestamp - connection_started
+                        duration_list.append(duration)
+                        connection_started = None
+
+        return duration_list
 
     @property
     def error_rate(self) -> float:
@@ -215,11 +254,19 @@ def main() -> None:
         type=Path,
         help="Path to the event log",
     )
+    parser.add_argument(
+        "--skip-invalid",
+        action="store_true",
+        help="Skip invalid events and continue loading",
+    )
     args = parser.parse_args()
     file_path = args.file_path
 
     try:
-        events = load_events(file_path)
+        events = load_events(
+            file_path,
+            skip_invalid=args.skip_invalid
+            )
     except (ValueError, OSError) as error:
         print(f"Could not load the log: {error}")
         raise SystemExit(1) from error
@@ -230,6 +277,7 @@ def main() -> None:
     print(log.count_by_object())
     print(log.error_rate)
     print(log.events)
+    print(log.bluetooth_session_durations())
 
 if __name__ == "__main__":
     main()

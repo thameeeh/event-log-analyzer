@@ -4,8 +4,10 @@
 
 import sys
 import runpy
+import logging
 
 from datetime import datetime
+from datetime import timedelta
 from starter import EventLog
 from starter import EventSeverity
 from starter import load_events
@@ -14,18 +16,9 @@ from starter import event_from_row
 
 import pytest
 from tests.helpers import make_event
+from tests.helpers import write_log
+from tests.helpers import make_bluetooth_events
 
-
-def write_log(file_path, headers, rows):
-    """
-    write a tab-separated log for a test
-    """
-    lines = ["\t".join(headers)]
-
-    for row in rows:
-        lines.append("\t".join(row))
-
-    file_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 def test_empty_log_has_zero_error_rate():
     log = EventLog([])
@@ -483,3 +476,259 @@ def test_main_loads_valid_file(
     output = capsys.readouterr().out
     assert "Loaded 1 events" in output
     assert "{'Object A': 1}" in output
+
+
+def test_bluetooth_session_durations_for_one_session():
+    events = make_bluetooth_events([
+        ("CONNECT", 0),
+        ("DISCONNECT", 150),
+        ])
+
+    log = EventLog(events)
+    actual = log.bluetooth_session_durations()
+
+    assert actual == [timedelta(seconds=150)]
+
+
+def test_bluetooth_session_durations_for_multiple_disconnects():
+    events = make_bluetooth_events([
+        ("CONNECT", 0),
+        ("DISCONNECT", 150),
+        ("DISCONNECT", 360),
+        ])
+
+    log = EventLog(events)
+    actual = log.bluetooth_session_durations()
+
+    assert actual == [timedelta(seconds=150)]
+
+
+def test_bluetooth_session_durations_for_multiple_connections():
+    events = make_bluetooth_events([
+        ("CONNECT", 0),
+        ("CONNECT", 300),
+        ("DISCONNECT", 360),
+        ])
+
+    log = EventLog(events)
+    actual = log.bluetooth_session_durations()
+
+    assert actual == [timedelta(seconds=60)]
+
+
+def test_bluetooth_session_durations_for_multiple_good_connections():
+    events = make_bluetooth_events([
+        ("CONNECT", 0),
+        ("DISCONNECT", 100),
+        ("CONNECT", 300),
+        ("DISCONNECT", 360),
+        ])
+
+    log = EventLog(events)
+    actual = log.bluetooth_session_durations()
+
+    assert actual == [
+            timedelta(seconds=100),
+            timedelta(seconds=60),
+            ]
+
+@pytest.mark.parametrize(
+    "actions",
+    [
+        [],
+        [("CONNECT", 0)],
+        [("DISCONNECT", 0)],
+        [("STATUS", 0)]
+    ]
+)
+
+
+def test_no_complete_bluetooth_sessions(actions):
+    events = make_bluetooth_events(actions)
+    log = EventLog(events)
+    actual = log.bluetooth_session_durations()
+
+    # pylint: disable-next=use-implicit-booleaness-not-comparison
+    assert actual == []
+
+
+def test_unrelated_objects_events_dont_affect_bluetooth_session():
+    events = make_bluetooth_events([
+        ("CONNECT", 0),
+        ("CONNECT", 60),
+        ("DISCONNECT", 90),
+        ("DISCONNECT", 120),
+        ])
+
+    events[1].object_name = "OTHER"
+    events[2].object_name = "OTHER"
+
+    log = EventLog(events)
+    actual = log.bluetooth_session_durations()
+
+    assert actual == [timedelta(seconds=120)]
+
+
+def test_load_events_skips_invalid_row_when_enabled(
+        log_with_invalid_row, caplog
+        ):
+
+    file_path = log_with_invalid_row
+
+    with caplog.at_level(logging.WARNING, logger="starter"):
+        actual = load_events(file_path, skip_invalid=True)
+
+    assert [event.number for event in actual] == [1, 3]
+    assert len(caplog.records) == 1
+
+    record = caplog.records[0]
+    assert record.levelno == logging.WARNING
+
+    message = record.getMessage()
+    assert "data row 2" in message
+    assert file_path.name in message
+    assert "Unknown severity: CRITICAL" in message
+
+
+def test_main_can_skip_invalid_rows(
+        log_with_invalid_row,
+        caplog,
+        capsys,
+        monkeypatch,
+        ):
+
+    file_path = log_with_invalid_row
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["starter.py", str(file_path), "--skip-invalid"],
+    )
+
+    runpy.run_module("starter", run_name="__main__")
+
+    record = caplog.records[0]
+    message = record.getMessage()
+    assert "Unknown severity: CRITICAL" in message
+
+    output = capsys.readouterr().out
+    assert "Loaded 2 events" in output
+
+
+def test_main_rejects_invalid_rows_by_default(
+        log_with_invalid_row,
+        capsys,
+        monkeypatch,
+        ):
+
+    file_path = log_with_invalid_row
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["starter.py", str(file_path)],
+    )
+
+    with pytest.raises(SystemExit) as exit_info:
+        runpy.run_module("starter", run_name="__main__")
+
+    assert exit_info.value.code == 1
+
+    output = capsys.readouterr().out
+    assert "Could not load the log" in output
+    assert "Unknown severity: CRITICAL" in output
+
+@pytest.mark.parametrize(
+    "column_name, invalid_value",
+    [
+        ("Event number", "not-a-number"),
+        ("Object ID", "not-a-number"),
+        ("Event ID", "not-a-number"),
+        ("Timestamp", "not-a-date"),
+    ],
+)
+def test_load_events_recovers_from_invalid_values(
+        column_name, invalid_value, tmp_path, valid_log_data
+        ):
+    file_path = tmp_path / "mixed_events.csv"
+    headers, valid_row = valid_log_data
+
+    content = "\t".join(headers) + "\n"
+
+    for number, severity in [
+        ("1", "Info"),
+        ("2", "Warning"),
+        ("3", "Warning"),
+    ]:
+        row = valid_row.copy()
+
+        row[headers.index("Event number")] = number
+        row[headers.index("Severity")] = severity
+
+        if number == "2":
+            row[headers.index(column_name)] = invalid_value
+
+        content += "\t".join(row) + "\n"
+
+    file_path.write_text(content, encoding="utf-8")
+    actual = load_events(file_path, skip_invalid=True)
+
+    assert [event.number for event in actual] == [1, 3]
+
+
+def test_load_events_recovers_from_incomplete_row(
+        tmp_path, valid_log_data
+        ):
+    file_path = tmp_path / "mixed_events.csv"
+    headers, valid_row = valid_log_data
+
+    content = "\t".join(headers) + "\n"
+
+    for number, severity in [
+        ("1", "Info"),
+        ("2", "Warning"),
+        ("3", "Warning"),
+    ]:
+        row = valid_row.copy()
+
+        row[headers.index("Event number")] = number
+        row[headers.index("Severity")] = severity
+
+        if number == "2":
+            row.pop()
+
+        content += "\t".join(row) + "\n"
+
+    file_path.write_text(content, encoding="utf-8")
+    actual = load_events(file_path, skip_invalid=True)
+
+    assert [event.number for event in actual] == [1, 3]
+
+
+def test_load_events_recovers_from_extra_fields(
+        tmp_path, valid_log_data
+        ):
+    file_path = tmp_path / "mixed_events.csv"
+    headers, valid_row = valid_log_data
+
+    content = "\t".join(headers) + "\n"
+
+    for number, severity in [
+        ("1", "Info"),
+        ("2", "Warning"),
+        ("3", "Warning"),
+    ]:
+        row = valid_row.copy()
+
+        row[headers.index("Event number")] = number
+        row[headers.index("Severity")] = severity
+
+        if number == "2":
+            row.append("Extra field")
+
+        content += "\t".join(row) + "\n"
+
+    file_path.write_text(content, encoding="utf-8")
+    actual = load_events(file_path, skip_invalid=True)
+
+    assert [event.number for event in actual] == [1, 3]
