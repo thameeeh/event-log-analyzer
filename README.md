@@ -66,11 +66,11 @@ python -m pip install pytest-cov pylint
 
 This runs the test suite and gives a coverage report:
 ```
-python -m pytest "python task/test_starter.py"
-python -m pytest "python task/test_starter.py" --cov=starter --cov-branch --cov-report=term-missing
+python -m pytest
+python -m pytest --cov=starter --cov-branch --cov-report=term-missing
 ```
 
 This lints the files.
 ```
-python -m pylint "python task/starter.py" "python task/test_starter.py"
+python -m pylint "python task/starter.py" tests
 ```

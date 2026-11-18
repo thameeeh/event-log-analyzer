@@ -10,50 +10,14 @@ from datetime import datetime
 from datetime import timedelta
 from starter import EventLog
 from starter import EventSeverity
-from starter import Event
 from starter import load_events
 from starter import main
+from starter import event_from_row
 
 import pytest
-
-
-def make_event(
-            number: int,
-            severity: EventSeverity,
-            name: str = "test",
-            timestamp: datetime = datetime(2026, 1, 1),
-            object_name: str = "Object A",
-        ) -> Event:
-    return Event(
-        number=number,
-        timestamp=timestamp,
-        severity=severity,
-        object_name=object_name,
-        object_id=10,
-        id=100,
-        name=name,
-        description="Testing event",
-        remedy="",
-        readable="",
-        raw="",
-    )
-
-
-def make_bluetooth_events(actions):
-    start = datetime(2026, 1, 1, 12, 0, 0)
-    events = []
-
-    for number, (name, seconds) in enumerate(actions, start=1):
-        event = make_event(
-            number=number,
-            severity=EventSeverity.INFO,
-            name=name,
-            timestamp=start + timedelta(seconds=seconds),
-            object_name="BLUETOOTH",
-        )
-        events.append(event)
-
-    return events
+from tests.helpers import make_event
+from tests.helpers import write_log
+from tests.helpers import make_bluetooth_events
 
 
 def test_empty_log_has_zero_error_rate():
@@ -77,8 +41,6 @@ def test_events_property_returns_stored_events(sample_events):
         (EventSeverity.ERROR, 1.0),
     ],
 )
-
-
 def test_error_rate_for_uniform_severity(
         severity, expected_rate
         ):
@@ -91,15 +53,6 @@ def test_error_rate_for_uniform_severity(
     assert actual == pytest.approx(expected_rate)
 
 
-@pytest.fixture(name="sample_events")
-def fixture_sample_events():
-    return [
-        make_event(1, EventSeverity.INFO, object_name="Object A"),
-        make_event(2, EventSeverity.WARNING, object_name="Object B"),
-        make_event(3, EventSeverity.ERROR, object_name="Object A"),
-    ]
-
-
 @pytest.mark.parametrize(
     "min_severity, expected_numbers",
     [
@@ -108,8 +61,6 @@ def fixture_sample_events():
         (EventSeverity.ERROR, [3]),
     ],
 )
-
-
 def test_filter_by_severity(
         sample_events, min_severity, expected_numbers
         ):
@@ -150,25 +101,6 @@ def test_error_rate(sample_events):
     assert result == pytest.approx(1 / 3)
 
 
-@pytest.fixture(name="valid_log_data")
-def fixture_valid_log_data():
-    """
-    Return the column headers and one valid event row for loader tests
-    """
-    headers = [
-        "Event number", "Timestamp", "Severity",
-        "Object name", "Object ID", "Event ID", "Event name",
-        "Description", "Remedy", "Readable", "Raw",
-    ]
-    row = [
-        "42", "2026-01-01 12:00:00", "Warning",
-        "Object A", "10", "100", "Testing",
-        "Test event", "", "Readable", "Raw",
-    ]
-
-    return headers, row
-
-
 @pytest.mark.parametrize(
     "prefix",
     [
@@ -176,8 +108,6 @@ def fixture_valid_log_data():
         "sep=\t\n",
     ],
 )
-
-
 @pytest.mark.parametrize(
     "reverse_columns",
     [
@@ -185,8 +115,6 @@ def fixture_valid_log_data():
         True,
     ],
 )
-
-
 def test_load_events(
         prefix, tmp_path, valid_log_data, reverse_columns
         ):
@@ -297,6 +225,62 @@ def test_load_events_rejects_unknown_severity(
 
 
 @pytest.mark.parametrize(
+    "column_name, invalid_value, expected_reason",
+    [
+        ("Severity", "Critical", "Unknown severity: CRITICAL"),
+        ("Event number", "not-a-number", "invalid literal"),
+        ("Object ID", "not-a-number", "invalid literal"),
+        ("Event ID", "not-a-number", "invalid literal"),
+        ("Timestamp", "not-a-timestamp", "does not match format"),
+    ],
+)
+def test_load_events_reports_invalid_value_location(
+        tmp_path, valid_log_data, column_name, invalid_value, expected_reason
+        ):
+    file_path = tmp_path / "invalid_values.csv"
+    headers, valid_row = valid_log_data
+
+    invalid_row = valid_row.copy()
+    invalid_row[headers.index("Event number")] = "99"
+    invalid_row[headers.index(column_name)] = invalid_value
+
+    write_log(file_path, headers, [valid_row, invalid_row])
+
+    with pytest.raises(ValueError) as error_info:
+        load_events(file_path)
+
+    message = str(error_info.value)
+
+    assert file_path.name in message
+    assert "data row 2" in message
+    assert expected_reason in message
+    assert isinstance(error_info.value.__cause__, ValueError)
+
+
+def test_load_events_reports_incomplete_row_location(
+    tmp_path, valid_log_data
+):
+    file_path = tmp_path / "incomplete_row.csv"
+    headers, valid_row = valid_log_data
+
+    incomplete_row = valid_row.copy()
+    incomplete_row[headers.index("Event number")] = "99"
+    incomplete_row.pop()
+
+    write_log(file_path, headers, [valid_row, incomplete_row])
+
+    with pytest.raises(ValueError) as error_info:
+        load_events(file_path)
+
+    message = str(error_info.value)
+
+    assert file_path.name in message
+    assert "data row 2" in message
+    assert "Missing fields: Raw" in message
+    assert isinstance(error_info.value.__cause__, ValueError)
+
+
+@pytest.mark.parametrize(
     "column_name",
     [
         "Event number",
@@ -304,8 +288,6 @@ def test_load_events_rejects_unknown_severity(
         "Event ID"
     ],
 )
-
-
 def test_load_events_rejects_invalid_integer(
         tmp_path, valid_log_data, column_name
         ):
@@ -365,6 +347,25 @@ def test_load_events_rejects_incomplete_row(
     with pytest.raises(ValueError, match="Missing fields"):
         load_events(file_path)
 
+@pytest.mark.parametrize(
+    "severity_text",
+    [
+        " Info",
+        " Info ",
+        "Info ",
+    ],
+)
+def test_event_from_row_accepts_severity_whitespace(
+        valid_log_data, severity_text
+        ):
+    headers, row = valid_log_data
+    row = dict(zip(headers, row))
+    row["Severity"] = severity_text
+
+    event = event_from_row(row)
+
+    assert event.severity == EventSeverity.INFO
+
 
 @pytest.mark.parametrize(
     "prefix",
@@ -373,8 +374,6 @@ def test_load_events_rejects_incomplete_row(
         "sep=||\t\n",
     ],
 )
-
-
 def test_load_events_rejects_invalid_delimiter(
         tmp_path, valid_log_data, prefix
         ):
@@ -400,8 +399,6 @@ def test_load_events_rejects_invalid_delimiter(
         "2026-02-60 12:03:28",
     ],
 )
-
-
 def test_load_events_rejects_invalid_timestamp(
         tmp_path, valid_log_data, timestamp
         ):
@@ -571,28 +568,6 @@ def test_unrelated_objects_events_dont_affect_bluetooth_session():
 
     assert actual == [timedelta(seconds=120)]
 
-
-@pytest.fixture(name="log_with_invalid_row")
-def fixture_log_with_invalid_row(tmp_path, valid_log_data):
-    file_path = tmp_path / "mixed_events.csv"
-    headers, valid_row = valid_log_data
-
-    content = "\t".join(headers) + "\n"
-
-    for number, severity in [
-        ("1", "Info"),
-        ("2", "Critical"),
-        ("3", "Warning"),
-    ]:
-        row = valid_row.copy()
-        row[headers.index("Event number")] = number
-        row[headers.index("Severity")] = severity
-
-        content += "\t".join(row) + "\n"
-
-    file_path.write_text(content, encoding="utf-8")
-
-    return file_path
 
 def test_load_events_skips_invalid_row_when_enabled(
         log_with_invalid_row, caplog

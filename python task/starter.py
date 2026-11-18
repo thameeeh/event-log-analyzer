@@ -50,9 +50,6 @@ class Event: # pylint: disable=too-many-instance-attributes
             f"{self.remedy}, {self.readable}, {self.raw}"
         )
 
-    def __repr__(self) -> str:
-        return str(self)
-
 
 def read_delimiter(log_file):
     """
@@ -79,8 +76,7 @@ def event_from_row(row):
     Build an event from a row with all required fields.
     :return: an event object
     """
-
-    severity_name = row["Severity"].upper()
+    severity_name = row["Severity"].upper().strip()
     try:
         severity = EventSeverity[severity_name]
     except KeyError as exc:
@@ -157,7 +153,9 @@ def load_events(path: Path, skip_invalid: bool = False) -> list[Event]:
                 events.append(event_from_row(row))
             except ValueError as error:
                 if not skip_invalid:
-                    raise
+                    raise ValueError(
+                        f"Invalid data row {row_number} in {path.name}: {error}"
+                    ) from error
 
                 LOGGER.warning(
                     "Skipping data row %d in %s: %s",
