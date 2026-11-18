@@ -8,32 +8,12 @@ import runpy
 from datetime import datetime
 from starter import EventLog
 from starter import EventSeverity
-from starter import Event
 from starter import load_events
 from starter import main
 from starter import event_from_row
 
 import pytest
-
-
-def make_event(
-            number: int,
-            severity: EventSeverity,
-            object_name: str = "Object A",
-        ) -> Event:
-    return Event(
-        number=number,
-        timestamp=datetime(2026, 1, 1),
-        severity=severity,
-        object_name=object_name,
-        object_id=10,
-        id=100,
-        name="Test",
-        description="Testing event",
-        remedy="",
-        readable="",
-        raw="",
-    )
+from tests.helpers import make_event
 
 
 def write_log(file_path, headers, rows):
@@ -68,8 +48,6 @@ def test_events_property_returns_stored_events(sample_events):
         (EventSeverity.ERROR, 1.0),
     ],
 )
-
-
 def test_error_rate_for_uniform_severity(
         severity, expected_rate
         ):
@@ -82,15 +60,6 @@ def test_error_rate_for_uniform_severity(
     assert actual == pytest.approx(expected_rate)
 
 
-@pytest.fixture(name="sample_events")
-def fixture_sample_events():
-    return [
-        make_event(1, EventSeverity.INFO, object_name="Object A"),
-        make_event(2, EventSeverity.WARNING, object_name="Object B"),
-        make_event(3, EventSeverity.ERROR, object_name="Object A"),
-    ]
-
-
 @pytest.mark.parametrize(
     "min_severity, expected_numbers",
     [
@@ -99,8 +68,6 @@ def fixture_sample_events():
         (EventSeverity.ERROR, [3]),
     ],
 )
-
-
 def test_filter_by_severity(
         sample_events, min_severity, expected_numbers
         ):
@@ -141,25 +108,6 @@ def test_error_rate(sample_events):
     assert result == pytest.approx(1 / 3)
 
 
-@pytest.fixture(name="valid_log_data")
-def fixture_valid_log_data():
-    """
-    Return the column headers and one valid event row for loader tests
-    """
-    headers = [
-        "Event number", "Timestamp", "Severity",
-        "Object name", "Object ID", "Event ID", "Event name",
-        "Description", "Remedy", "Readable", "Raw",
-    ]
-    row = [
-        "42", "2026-01-01 12:00:00", "Warning",
-        "Object A", "10", "100", "Testing",
-        "Test event", "", "Readable", "Raw",
-    ]
-
-    return headers, row
-
-
 @pytest.mark.parametrize(
     "prefix",
     [
@@ -167,8 +115,6 @@ def fixture_valid_log_data():
         "sep=\t\n",
     ],
 )
-
-
 @pytest.mark.parametrize(
     "reverse_columns",
     [
@@ -176,8 +122,6 @@ def fixture_valid_log_data():
         True,
     ],
 )
-
-
 def test_load_events(
         prefix, tmp_path, valid_log_data, reverse_columns
         ):
@@ -342,6 +286,7 @@ def test_load_events_reports_incomplete_row_location(
     assert "Missing fields: Raw" in message
     assert isinstance(error_info.value.__cause__, ValueError)
 
+
 @pytest.mark.parametrize(
     "column_name",
     [
@@ -350,8 +295,6 @@ def test_load_events_reports_incomplete_row_location(
         "Event ID"
     ],
 )
-
-
 def test_load_events_rejects_invalid_integer(
         tmp_path, valid_log_data, column_name
         ):
@@ -430,6 +373,7 @@ def test_event_from_row_accepts_severity_whitespace(
 
     assert event.severity == EventSeverity.INFO
 
+
 @pytest.mark.parametrize(
     "prefix",
     [
@@ -437,8 +381,6 @@ def test_event_from_row_accepts_severity_whitespace(
         "sep=||\t\n",
     ],
 )
-
-
 def test_load_events_rejects_invalid_delimiter(
         tmp_path, valid_log_data, prefix
         ):
@@ -464,8 +406,6 @@ def test_load_events_rejects_invalid_delimiter(
         "2026-02-60 12:03:28",
     ],
 )
-
-
 def test_load_events_rejects_invalid_timestamp(
         tmp_path, valid_log_data, timestamp
         ):
@@ -483,6 +423,7 @@ def test_load_events_rejects_invalid_timestamp(
 
     with pytest.raises(ValueError):
         load_events(file_path)
+
 
 def test_main_reports_missing_file(tmp_path, monkeypatch, capsys):
     missing_path = tmp_path / "missing.csv"
